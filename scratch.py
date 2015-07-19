@@ -96,21 +96,29 @@ def get_border(df):
 API_KEY = "7abvhabvegsnmtjxz9ybu9wj"
 
 def accumulate_rental_information(postcodes, file_name='data.pickle'):
-    if os.path.exists(file_name):
-        raise ValueError('File already exists!')
-    
-    cPickle.dump({}, open(file_name, 'w+'))   
+    if not os.path.exists(file_name):
+        cPickle.dump({}, open(file_name, 'w+'))
+        already_processed = set()
+    else:
+        current_store = cPickle.load(open(file_name, 'r'))
+        already_processed = {k for k, v in current_store.iteritems() if v}
     
     api = zoopla.api(version=1, api_key=API_KEY)
     
     for name, row in postcodes.iterrows():
-        print name, row['postcode']
-        listings = list(api.property_listings(area=row['postcode'], listing_status='rent', radius=0.5, minimum_beds=0, maximum_beds=1, order_by='age'))
-        current_store = cPickle.load(open(file_name, 'r'))
-        current_store[name] = listings
-        cPickle.dump(current_store, open(file_name, 'w+'))
-        
-        time.sleep(60)
+        if name not in already_processed:
+            print name, row['postcode']
+            try:
+                listings = list(api.property_listings(area=row['postcode'], listing_status='rent', radius=0.5, minimum_beds=0, maximum_beds=1, order_by='age'))
+                current_store = cPickle.load(open(file_name, 'r'))
+                current_store[name] = listings
+                cPickle.dump(current_store, open(file_name, 'w+'))
+            
+                time.sleep(37)
+            except Exception as e:
+                print 'Failed with error {} on name {} and postcode {}'.format(name, row['postcode'], e)
+        else:
+            print 'Already processed {}'.format(name)
 
 def get_rent_statistic(listings):
     return WEEKS_PER_MONTH*sp.median([int(l.price) for l in listings])
