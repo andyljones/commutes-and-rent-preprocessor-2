@@ -16,45 +16,67 @@ function load_intervals()
 end
 
 function flatten(t)
-    local is_leaf = type(t) == 'table' and type(std.table.values(t)[1]) ~= 'table'
-    
-    if is_leaf then
-        local results = {}
-        for key, value in pairs(t) do
-            results[key] = torch.Tensor{value}
-        end
-        return results
-    else
-        local results = {}
-        for _, child in pairs(t) do
-            for key, value in pairs(flatten(child)) do
-                if results[key] == nil then
-                    results[key] = value
-                else
-                    results[key] = torch.cat(results[key], value)
-                end
-            end
-        end
-    
-        return results
-    end    
-end
-  
-function get_average_intervals_for_station(station_intervals)
-  return fn.map(fn.lambda '=_1, torch.median(_2)[1]', flatten(station_intervals))
-end
-    
-function get_average_intervals_for_line(line_intervals)
-  return fn.map(fn.lambda '=_1, get_average_intervals_for_station(_2)', line_intervals)
+  results = {}
+  for node_type, path, value in std.tree.nodes(t) do
+    if node_type == 'leaf' then
+      key = path[#path]
+      if results[key] then
+        results[key] = torch.cat(results[key], torch.Tensor{value})
+      else
+        results[key] = torch.Tensor{value}
+      end
+    end
+  end
+  return results
 end
 
 function get_average_intervals(intervals)
-  return fn.map(fn.lambda '=_1, get_average_intervals_for_line(_2)', intervals)
+  local results = {}
+  for line, line_intervals in pairs(intervals) do
+    for origin, origin_intervals in pairs(line_intervals) do
+      for destination, destination_intervals in pairs(flatten(origin_intervals)) do
+        if not results[origin] then results[origin] = {} end
+        
+        local median_interval = torch.median(destination_intervals)[1]
+        local current_value = results[origin][destination]
+        if current_value then
+          results[origin][destination] = std.math.min(current_value, median_interval)
+        else
+          results[origin][destination] = median_interval
+        end
+      end
+    end
+  end
+  return results
+end
+
+function calculate_shortest_paths(average_intervals)
+  local results = std.tree.clone(average_intervals)
+  for i, _ in pairs(results) do
+    for j, _ in pairs(results) do
+      if not results[i][j] and i ~= j then
+        results[i][j] = math.huge
+      elseif not results[i][j] and i == j then
+        results[i][j] = 0
+      end
+    end
+  end
+  
+  for k, _ in pairs(results) do
+    for i, _ in pairs(results) do
+      for j, _ in pairs(results) do
+        results[i][j] = std.math.min(results[i][j], results[i][k] + results[k][j] + 5)
+      end
+    end
+  end
+  
+  return results
 end
 
 local intervals = load_intervals()
 local average_intervals = get_average_intervals(intervals)
+local shortest_paths = calculate_shortest_paths(average_intervals)
 
-for k, v in pairs(average_intervals['bakerloo']['Paddington Underground Station']) do
+for k, v in pairs(shortest_paths['Euston Underground Station']) do
   print(k, v)
 end
