@@ -1,1 +1,10 @@
-processed-departure-times/*
+*.swp
+*.sqlite
+*.pickle
+*.js
+processed-departure-times
+*.pyc
+*.t7
+zoopla/*
+lines
+lines-backup
