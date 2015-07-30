@@ -77,6 +77,9 @@ local intervals = load_intervals()
 local average_intervals = get_average_intervals(intervals)
 local shortest_paths = calculate_shortest_paths(average_intervals)
 
-for k, v in pairs(shortest_paths['Euston Underground Station']) do
-  print(k, v)
+local keys = std.table.keys(shortest_paths)
+table.sort(keys)
+
+for _, k in pairs(keys) do
+  print(k, shortest_paths['Euston Underground Station'][k])
 end
