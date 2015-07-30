@@ -4,15 +4,15 @@ local fn = require('std.functional')
 local torch = require('torch')
 
 function load_intervals()
-    local results = {}
-    for filename in lfs.dir('lines') do
-        stem, extension = unpack(std.string.split(filename, '%.'))
-        if extension == 't7' then
-            results[stem] = torch.load('lines/' .. filename)
-        end
+  local results = {}
+  for filename in lfs.dir('lines') do
+    stem, extension = unpack(std.string.split(filename, '%.'))
+    if extension == 't7' then
+        results[stem] = torch.load('lines/' .. filename)
     end
+  end
     
-    return results
+  return results
 end
 
 function flatten(t)
