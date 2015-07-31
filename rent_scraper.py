@@ -28,43 +28,44 @@ WEEKS_PER_MONTH = 365/12/(365/52.)
 
 API_KEY = "7abvhabvegsnmtjxz9ybu9wj"
 
-def get_postcodes():
-    return pd.read_csv('tube-postcodes.txt', index_col=0, names=['name', 'postcode'])
+def get_coords():
+    df = pd.DataFrame(json.load(open('coords.json'))).T
+    df.columns = ['lat', 'lon']
+    return df
 
-def append_rental_information_for_postcode(name, postcode, file_name):
+def append_rental_information(name, lat, lon, file_name):
     api = zoopla.api(version=1, api_key=API_KEY)    
     
+    request_interval = 3600/RATE_LIMIT + 1    
+    
     try:
-        listings = list(api.property_listings(area=postcode, **SEARCH_OPTIONS))
+        listings = list(api.property_listings(latitude=lat, longitude=lon, **SEARCH_OPTIONS))
         current_store = cPickle.load(open(file_name, 'r'))
         current_store[name] = listings
         cPickle.dump(current_store, open(file_name, 'w+'))
-        return True
+        print('Fetched {}, found {} listings'.format(name, len(listings)))
+        time.sleep(request_interval)
     except Exception as e:
-        print 'Failed with error {} on name {} and postcode {}'.format(name, postcode, e)
-        return False
+        print 'Failed with error {} on name {} and coords {}'.format(e, name, (lat, lon))
 
 def accumulate_rental_information(file_name):
-    postcodes = get_postcodes()    
-    request_interval = 3600/RATE_LIMIT + 1
+    coords = get_coords()    
     
     if not os.path.exists(file_name):
         cPickle.dump({}, open(file_name, 'w+'))
         already_processed = set()
     else:
         current_store = cPickle.load(open(file_name, 'r'))
-        already_processed = {k for k, v in current_store.iteritems() if v}
+        already_processed = {k for k, v in current_store.iteritems() if v is not None}
     
-    for name, row in postcodes.iterrows():
+    for name, row in coords.iterrows():
         if name not in already_processed:
-            print('Fetching {}, {}'.format(name, row['postcode']))
-            success = append_rental_information_for_postcode(name, row['postcode'], file_name)
-            if success: time.sleep(request_interval)
+            append_rental_information(name, row['lat'], row['lon'], file_name)
         else:
-            print('Already fetched {}'.format(name))
+            print('Skipping {}, since it\'s already in the file'.format(name))
 
 def get_rent_statistic(listings):
-    return WEEKS_PER_MONTH*sp.median([int(l.price) for l in listings])
+    return [WEEKS_PER_MONTH*int(l.price) for l in listings]
         
 def get_rent_statistics(file_name):
     store = cPickle.load(open(file_name, 'r'))

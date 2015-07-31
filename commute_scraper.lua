@@ -58,7 +58,7 @@ function get_intervals_for_line(line_name, ignores)
 end
 
 function save_intervals_for_all_lines()
-  local lines_ = get_lines_of_interest(get_line_data())
+  local lines_ = tfl_api.get_lines_of_interest()
         
   for line in std.ielems(lines_) do
     print(string.format('Getting information for line %s', line))

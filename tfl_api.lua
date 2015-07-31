@@ -17,7 +17,9 @@ function get_line_data()
   return request('Line?')
 end
 
-function get_lines_of_interest(line_data)
+function get_lines_of_interest()
+  line_data = get_line_data()
+  
   local results = {}
   for k, v in pairs(line_data) do
     if v.modeName == 'tube' or v.modeName == 'overground' then table.insert(results, v.id) end
@@ -58,5 +60,6 @@ end
 return {
   request=request,
   format_stem=format_stem,
-  get_station_names=get_station_names
+  get_station_names=get_station_names,
+  get_lines_of_interest=get_lines_of_interest
   }
