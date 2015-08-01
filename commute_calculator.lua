@@ -11,7 +11,7 @@ function load_intervals()
         results[stem] = torch.load('lines/' .. filename)
     end
   end
-    
+
   return results
 end
 
@@ -36,7 +36,7 @@ function get_average_intervals(intervals)
     for origin, origin_intervals in pairs(line_intervals) do
       for destination, destination_intervals in pairs(flatten(origin_intervals)) do
         if not results[origin] then results[origin] = {} end
-        
+
         local median_interval = torch.median(destination_intervals)[1]
         local current_value = results[origin][destination]
         if current_value then
@@ -61,7 +61,7 @@ function calculate_shortest_paths(average_intervals)
       end
     end
   end
-  
+
   for k, _ in pairs(results) do
     for i, _ in pairs(results) do
       for j, _ in pairs(results) do
@@ -69,17 +69,16 @@ function calculate_shortest_paths(average_intervals)
       end
     end
   end
-  
+
   return results
 end
 
-local intervals = load_intervals()
-local average_intervals = get_average_intervals(intervals)
-local shortest_paths = calculate_shortest_paths(average_intervals)
+function save_shortest_path_lengths()
+  local intervals = load_intervals()
+  local average_intervals = get_average_intervals(intervals)
+  local shortest_paths = calculate_shortest_paths(average_intervals)
 
-local keys = std.table.keys(shortest_paths)
-table.sort(keys)
-
-for _, k in pairs(keys) do
-  print(k, shortest_paths['Euston Underground Station'][k])
+  torch.save('commute_lengths.t7', shortest_paths)
 end
+
+save_shortest_path_lengths()
