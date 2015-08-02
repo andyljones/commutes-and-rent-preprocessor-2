@@ -14,6 +14,8 @@ import scipy as sp
 import pandas as pd
 import zoopla
 
+API_KEY = json.load(open('keys.json', 'r'))['zoopla']
+
 SEARCH_OPTIONS = dict(
             listing_status='rent',
             radius=0.5,
@@ -26,8 +28,6 @@ SEARCH_OPTIONS = dict(
 RATE_LIMIT = 100
 
 WEEKS_PER_MONTH = 365/12/(365/52.)
-
-API_KEY = "7abvhabvegsnmtjxz9ybu9wj"
 
 def get_coords():
     df = pd.DataFrame(json.load(open('coords.json'))).T
