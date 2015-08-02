@@ -2,8 +2,6 @@ local std = require('std')
 local torch = require('torch')
 local cjson = require('cjson')
 
-require('gnuplot')
-
 local RENT_TOLERANCE = 1500
 local COMMUTE_TOLERANCE = 30
 local PERCENTILE = 75
@@ -104,12 +102,8 @@ function find_possibilities(A_targets, B_targets)
   std.functional.map(function (target) return filter_data(get_data(target)) end)
 end
 
-local E = get_filtered_data('Euston Square Underground Station')
-local ES = get_filtered_data('Euston Underground Station')
-local KX = get_filtered_data('King\'s Cross St. Pancras Underground Station')
-
+local E = get_filtered_data('Euston Underground Station')
 local GP = get_filtered_data('Green Park Underground Station')
-
 local combination = intersection{GP, E}
 
 print_data(combination)
