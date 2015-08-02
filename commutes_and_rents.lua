@@ -2,8 +2,9 @@ local std = require('std')
 local torch = require('torch')
 local cjson = require('cjson')
 
-local RENT_TOLERANCE = 1500
+local RENT_TOLERANCE = 1200
 local COMMUTE_TOLERANCE = 30
+local FRACTION_TOLERANCE = 5
 local PERCENTILE = 75
 
 function load_commute_lengths()
@@ -17,26 +18,36 @@ function load_rents()
   return cjson.decode(text)
 end
 
+local commute_lengths = load_commute_lengths()
+local rents = load_rents()
+
 function percentile(a, p)
   local sorted = torch.sort(a)
   local index = math.max((p/100.)*a:size(1) + 1, 1)
   return sorted[index]
 end
 
+function inverse_percentile(a, c)
+  local sorted = torch.sort(a)
+  for i=1, a:size(1) do
+    if sorted[i] > c then
+      return 100*(i-1)/sorted:size(1)
+    end
+  end
+  return 100
+end
+
 function short_name(name)
   return std.string.split(name, ' Underground Station')[1]
 end
-
-local commute_lengths = load_commute_lengths()
-local rents = load_rents()
 
 function get_data(destination)
   local relevant_data = {}
   for origin, commutes in pairs(commute_lengths) do
     if #rents[origin] > 10 then
       local commute = commutes[destination]
-      local rent = percentile(torch.Tensor(rents[origin]), PERCENTILE)
-      relevant_data[origin] = {['name']=origin, ['commute']=commute, ['rent']=rent, ['count']=#rents[origin]}
+      local fraction = inverse_percentile(torch.Tensor(rents[origin]), RENT_TOLERANCE)
+      relevant_data[origin] = {['name']=origin, ['commute']=commute, ['fraction']=fraction, ['count']=#rents[origin]}
     end
   end
   return relevant_data
@@ -45,7 +56,7 @@ end
 function filter_data(data)
   local filtered_data = {}
   for k, v in pairs(data) do
-    if v.rent < RENT_TOLERANCE and v.commute < COMMUTE_TOLERANCE then
+    if v.fraction >= FRACTION_TOLERANCE and v.commute <= COMMUTE_TOLERANCE then
       filtered_data[k] = v
     end
   end
@@ -59,9 +70,10 @@ end
 function print_data(data)
   local sorted = std.table.sort(std.table.keys(data), function (a,b) return data[a].commute < data[b].commute end)
 
+  print(string.format('Worst commute   %% below £%s   Location', RENT_TOLERANCE))
   for _, k in pairs(sorted) do
     local v = data[k]
-    print(string.format('%2.0f mins, £%4.0f, %3d listings total, %s', v.commute, v.rent, v.count, short_name(v.name)))
+    print(string.format('%2.0f mins         %3.0f%%            %s', v.commute, v.fraction, short_name(v.name)))
   end
 end
 
@@ -105,5 +117,4 @@ end
 local E = get_filtered_data('Euston Underground Station')
 local GP = get_filtered_data('Green Park Underground Station')
 local combination = intersection{GP, E}
-
 print_data(combination)
