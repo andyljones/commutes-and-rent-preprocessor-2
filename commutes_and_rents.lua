@@ -2,10 +2,9 @@ local std = require('std')
 local torch = require('torch')
 local cjson = require('cjson')
 
-local RENT_TOLERANCE = 1200
+local RENT_TOLERANCE = 1500
 local COMMUTE_TOLERANCE = 30
-local FRACTION_TOLERANCE = 5
-local PERCENTILE = 75
+local FRACTION_TOLERANCE = 25
 
 function load_commute_lengths()
   return torch.load('commute_lengths.t7')
@@ -70,10 +69,10 @@ end
 function print_data(data)
   local sorted = std.table.sort(std.table.keys(data), function (a,b) return data[a].commute < data[b].commute end)
 
-  print(string.format('Worst commute   %% below £%s   Location', RENT_TOLERANCE))
+  print(string.format('Worst commute   # listings   %% below £%s   Location', RENT_TOLERANCE))
   for _, k in pairs(sorted) do
     local v = data[k]
-    print(string.format('%2.0f mins         %3.0f%%            %s', v.commute, v.fraction, short_name(v.name)))
+    print(string.format('%2.0f mins         %3d          %3.0f%%            %s', v.commute, v.count, v.fraction, short_name(v.name)))
   end
 end
 
