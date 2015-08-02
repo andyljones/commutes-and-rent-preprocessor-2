@@ -4,7 +4,7 @@ local cjson = require('cjson')
 
 local RENT_TOLERANCE = 1500
 local COMMUTE_TOLERANCE = 30
-local FRACTION_TOLERANCE = 25
+local FRACTION_TOLERANCE = 10
 
 function load_commute_lengths()
   return torch.load('commute_lengths.t7')
@@ -17,8 +17,16 @@ function load_rents()
   return cjson.decode(text)
 end
 
+function load_crime_counts()
+  file = io.open('crime_counts.json')
+  counts = cjson.decode(file:read('*all'))
+  file:close()
+  return counts
+end
+
 local commute_lengths = load_commute_lengths()
 local rents = load_rents()
+local crimes = load_crime_counts()
 
 function percentile(a, p)
   local sorted = torch.sort(a)
@@ -46,7 +54,13 @@ function get_data(destination)
     if #rents[origin] > 10 then
       local commute = commutes[destination]
       local fraction = inverse_percentile(torch.Tensor(rents[origin]), RENT_TOLERANCE)
-      relevant_data[origin] = {['name']=origin, ['commute']=commute, ['fraction']=fraction, ['count']=#rents[origin]}
+      local crime = torch.Tensor(std.table.values(crimes[origin])):sum()
+      relevant_data[origin] = {
+        ['name']=origin,
+        ['commute']=commute,
+        ['fraction']=fraction,
+        ['count']=#rents[origin],
+        ['crime']=crime}
     end
   end
   return relevant_data
@@ -69,10 +83,10 @@ end
 function print_data(data)
   local sorted = std.table.sort(std.table.keys(data), function (a,b) return data[a].commute < data[b].commute end)
 
-  print(string.format('Worst commute   # listings   %% below £%s   Location', RENT_TOLERANCE))
+  print(string.format('Worst commute   # listings   %% below £%s   Crime  Location', RENT_TOLERANCE))
   for _, k in pairs(sorted) do
     local v = data[k]
-    print(string.format('%2.0f mins         %3d          %3.0f%%            %s', v.commute, v.count, v.fraction, short_name(v.name)))
+    print(string.format('%2.0f mins         %3d          %3.0f%%            %4d   %s', v.commute, v.count, v.fraction, v.crime, short_name(v.name)))
   end
 end
 
